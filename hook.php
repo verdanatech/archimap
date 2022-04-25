@@ -25,27 +25,28 @@
  */
 
 function plugin_archimap_install() {
-   global $DB;
+   global $DB, $CFG_GLPI;
 
-   include_once (GLPI_ROOT."/plugins/archimap/inc/profile.class.php");
+   include_once (Plugin::getPhpDir("archimap")."/inc/profile.class.php");
 
    $update=false;
    if ($DB->TableExists("glpi_plugin_archiapp_graphs")) {
       
-      $DB->runFile(GLPI_ROOT ."/plugins/archimap/sql/update-1.0.0.sql");
+      $DB->runFile(Plugin::getPhpDir("archimap")."/sql/update-1.0.0.sql");
 
    }
    if (!$DB->TableExists("glpi_plugin_archimap_graphs")) {
 
-		$DB->runFile(GLPI_ROOT ."/plugins/archimap/sql/empty-3.1.0.sql");
+		$DB->runFile(Plugin::getPhpDir("archimap")."/sql/empty-3.1.0.sql");
 	}
 	else {
 		if ($DB->TableExists("glpi_plugin_archimap_graphs") && !$DB->TableExists("glpi_plugin_archimap_configs")) {
 			$update=true;
-			$DB->runFile(GLPI_ROOT ."/plugins/archimap/sql/update-3.0.0.sql");
+			$DB->runFile(Plugin::getPhpDir("archimap")."/sql/update-3.0.0.sql");
 		}
-		if ($DB->TableExists("glpi_plugin_archimap_configs"))
-			$DB->runFile(GLPI_ROOT ."/plugins/archimap/sql/update-3.1.0.sql");
+		if ($DB->TableExists("glpi_plugin_archimap_configs")
+		&& ($DB->numrows($DB->query("SELECT * from glpi_plugin_archimap_configs where type = 'APP_TOKEN'")) == 0))
+			$DB->runFile(Plugin::getPhpDir("archimap")."/sql/update-3.1.0.sql");
 	}
 
    
@@ -73,6 +74,10 @@ function plugin_archimap_install() {
       }
    }
    
+	if ($DB->TableExists("glpi_plugin_archimap_configs")) {
+		include (Plugin::getPhpDir("archimap")."/ajax/copystylestodb.php");
+	}
+
    if ($update) {
       $query_="SELECT *
             FROM `glpi_plugin_archimap_profiles` ";
@@ -114,8 +119,8 @@ function plugin_archimap_install() {
 function plugin_archimap_uninstall() {
    global $DB;
    
-   include_once (GLPI_ROOT."/plugins/archimap/inc/profile.class.php");
-   include_once (GLPI_ROOT."/plugins/archimap/inc/menu.class.php");
+   include_once (Plugin::getPhpDir("archimap")."/inc/profile.class.php");
+   include_once (Plugin::getPhpDir("archimap")."/inc/menu.class.php");
    
 	$tables = array("glpi_plugin_archimap_graphs",
 					"glpi_plugin_archimap_graphs_items",
@@ -169,7 +174,7 @@ function plugin_archimap_postinit() {
 
 function plugin_archimap_AssignToTicket($types) {
 
-   if (Session::haveRight("plugin_archimap_open_ticket", "1")) {
+   if (Session::haveRight("plugin_archimap_open_ticket", READ)) {
       $types['PluginArchimapGraph']=PluginArchimapGraph::getTypeName(2);
    }
    return $types;
@@ -311,8 +316,8 @@ function plugin_archimap_getDropdown() {
 
    $plugin = new Plugin();
    if ($plugin->isActivated("archimap"))
-		return array(//'PluginArchimapGraphstate'=>PluginArchimapGraphstate::getTypeName(2),
-//                'PluginArchimapGraphtype'=>PluginArchimapGraphtype::getTypeName(1) getTypeName(2) does not work
+		return array('PluginArchimapGraphstate'=>PluginArchimapGraphstate::getTypeName(2),
+                'PluginArchimapGraphtype'=>PluginArchimapGraphtype::getTypeName(2) //getTypeName(2) does not work
                 );
    else
       return [];
@@ -334,18 +339,18 @@ function plugin_archimap_getAddSearchOptions($itemtype) {
          $sopt[2470]['datatype']      = 'itemlink';
          $sopt[2470]['massiveaction'] = false;
          $sopt[2470]['itemlink_type'] = 'PluginArchimapGraph';
-         $sopt[2470]['joinparams']    = array('beforejoin'
-                                                => array('table'      => 'glpi_plugin_archimap_graphs_items',
-                                                         'joinparams' => array('jointype' => 'itemtype_item')));
+         $sopt[2470]['joinparams']    = ['beforejoin'
+                                                => ['table'      => 'glpi_plugin_archimap_graphs_items',
+                                                         'joinparams' => ['jointype' => 'itemtype_item']]];
 
 
          $sopt[2471]['table']        = 'glpi_plugin_archimap_graphstates';
          $sopt[2471]['field']        = 'name';
          $sopt[2471]['name']         = PluginArchimapGraph::getTypeName(2)." - ".PluginArchimapGraphstate::getTypeName(1);
          $sopt[2471]['forcegroupby'] = true;
-         $sopt[2471]['joinparams']   = array('beforejoin' => array(
-                                                   array('table'      => 'glpi_plugin_archimap_graphs',
-                                                         'joinparams' => $sopt[2470]['joinparams'])));
+         $sopt[2471]['joinparams']   = ['beforejoin' => [
+                                                   ['table'      => 'glpi_plugin_archimap_graphs',
+                                                         'joinparams' => $sopt[2470]['joinparams']]]];
          $sopt[2471]['datatype']       = 'dropdown';
          $sopt[2471]['massiveaction']  = false;
 
@@ -353,9 +358,9 @@ function plugin_archimap_getAddSearchOptions($itemtype) {
          $sopt[2472]['field']        = 'name';
          $sopt[2472]['name']         = PluginArchimapGraph::getTypeName(2)." - ".PluginArchimapGraphtype::getTypeName(1);
          $sopt[2472]['forcegroupby'] = true;
-         $sopt[2472]['joinparams']   = array('beforejoin' => array(
-                                                   array('table'      => 'glpi_plugin_archimap_graphs',
-                                                         'joinparams' => $sopt[2470]['joinparams'])));
+         $sopt[2472]['joinparams']   = ['beforejoin' => [
+                                                   ['table'      => 'glpi_plugin_archimap_graphs',
+                                                         'joinparams' => $sopt[2470]['joinparams']]]];
          $sopt[2472]['datatype']       = 'dropdown';
          $sopt[2472]['massiveaction']  = false;
       }
