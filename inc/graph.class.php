@@ -303,6 +303,7 @@ class PluginArchimapGraph extends CommonDBTM {
 */
    function showForm ($ID, $options=[]) {
 
+      $rand = mt_rand();
       $this->initForm($ID, $options);
       $this->showFormHeader($options);
 
@@ -310,7 +311,7 @@ class PluginArchimapGraph extends CommonDBTM {
       //name of diagrams
       echo "<td>".__('Name')."</td>";
       echo "<td>";
-      Html::autocompletionTextField($this,"name", array('size' => 50, 'attrs' => ['size' => 50]));
+      echo Html::input('name',['value' => $this->fields['name'], 'id' => "name" /*, 'size' => 50*/]);
       echo "</td>";
       //type
       echo "<td>".__('Type').": </td>";
@@ -323,8 +324,7 @@ class PluginArchimapGraph extends CommonDBTM {
       //short description of diagrams
       echo "<td>".__('Short description', 'archimap')."</td>";
       echo "<td colspan='3'>";
-//      echo "<textarea cols='100' rows='1' name='shortdescription'>".$this->fields["shortdescription"]."</textarea>";
-      Html::autocompletionTextField($this,"shortdescription",['option' => 'style="width:100%"']);
+      echo Html::input('shortdescription',['value' => $this->fields['shortdescription'], 'id' => "shortdescription", 'option' => 'style="width:100%"']);
       echo "</td>";
 	  echo "</tr>";
 	  
@@ -342,10 +342,6 @@ class PluginArchimapGraph extends CommonDBTM {
       User::dropdown(['name' => "users_id", 'value' => $this->fields["users_id"], 'entity' => $this->fields["entities_id"], 'right' => 'interface']);
       echo "</td>";
       echo "</tr>";
-
-
-      echo "</tr>";
-
 
       $this->showFormButtons($options);
 
@@ -414,14 +410,14 @@ class PluginArchimapGraph extends CommonDBTM {
                         'used'   => $p['used']];
 
       $out .= Ajax::updateItemOnSelectEvent($field_id,"show_".$p['name'].$rand,
-                                            $CFG_GLPI["root_doc"]."/plugins/archimap/ajax/dropdownTypeArchimap.php",
+                                            Plugin::getPhpDir("archimap")."/ajax/dropdownTypeArchimap.php",
                                             $params, false);
       $out .= "<span id='show_".$p['name']."$rand'>";
       $out .= "</span>\n";
 
       $params['graphtype'] = 0;
       $out .= Ajax::updateItem("show_".$p['name'].$rand,
-                               $CFG_GLPI["root_doc"]. "/plugins/archimap/ajax/dropdownTypeArchimap.php",
+                               Plugin::getPhpDir("archimap")."/ajax/dropdownTypeArchimap.php",
                                $params, false);
       if ($p['display']) {
          echo $out;
@@ -496,7 +492,7 @@ class PluginArchimapGraph extends CommonDBTM {
          $colsup=0;
       }
 
-      if ($withtemplate!=2) echo "<form method='post' action=\"".$CFG_GLPI["root_doc"]."/plugins/archimap/front/graph.form.php\">";
+      if ($withtemplate!=2) echo "<form method='post' action=\"".Plugin::getPhpDir("archimap")."/front/graph.form.php\">";
 
       echo "<div align='center'><table class='tab_cadre_fixe'>";
       echo "<tr><th colspan='".(4+$colsup)."'>"._n('Graph associated', 'Graphs associated', 2, 'archimap')."</th></tr>";
@@ -513,7 +509,7 @@ class PluginArchimapGraph extends CommonDBTM {
 
          echo "<tr class='tab_bg_1".($data["is_deleted"]=='1'?"_2":"")."'>";
          if ($withtemplate!=3 && $canread && (in_array($data['entities_id'],$_SESSION['glpiactiveentities']) || $data["is_recursive"])) {
-            echo "<td class='center'><a href='".$CFG_GLPI["root_doc"]."/plugins/archimap/front/graph.form.php?id=".$data["id"]."'>".$data["name"];
+            echo "<td class='center'><a href='".Plugin::getPhpDir("archimap")."/front/graph.form.php?id=".$data["id"]."'>".$data["name"];
          if ($_SESSION["glpiis_ids_visible"]) echo " (".$data["id"].")";
             echo "</a></td>";
          } else {
@@ -712,7 +708,9 @@ class PluginArchimapGraph extends CommonDBTM {
 				  for ($i = 1 ; $i <= $input['repeat'] ; $i++) {
 					$values["name"] = $name . " (Copy $i)";
 
-					if ($item->add($values)) {
+					$newid = $item->add($values); // copy and save the (new) id
+					if ($newid) { 
+						$item->link($newid, $values["graph"], " "); // link the new diagram with graph elements
 						$success[] = $key;
 					} else {
 						$failure[] = $key;
@@ -731,7 +729,7 @@ class PluginArchimapGraph extends CommonDBTM {
       }
       parent::processMassiveActionsForOneItemtype($ma, $item, $ids);
    }
-   function link($ID, $newgraph) {
+   function link($ID, $newgraph, $oldgraph=NULL) {
 		global $DB;
 		// analyze new version
 		libxml_use_internal_errors(true);
@@ -744,40 +742,50 @@ class PluginArchimapGraph extends CommonDBTM {
 			$diagram = urldecode(zlib_decode(base64_decode($newdiagram, TRUE))); // decode the base64, decompress (inflate) and url-decode the diagram
 			$diagramxml = simplexml_load_string($diagram); // load the xml into a structure
 			foreach($diagramxml->xpath('//Array[@autocompleteobject]') as $customelement) { // find elements with 'autocompleteobject' in customproperties
-				$itemtype = (string)$customelement['autocompleteobject']; // get the 'autocompleteobject' attribute
-				$item_id = (string)$customelement['glpi_id']; // get the 'glpi_id' attribute
-				$newelements[$itemtype][$item_id] += 1;
+               $itemtype = (string)$customelement['autocompleteobject']; // get the 'autocompleteobject' attribute
+               $item_id = (string)$customelement['glpi_id']; // get the 'glpi_id' attribute
+               if (!empty($itemtype) && !empty($item_id))
+                  isset($newelements[$itemtype][$item_id])? $newelements[$itemtype][$item_id] += 1 : $newelements[$itemtype][$item_id] = 0;
+               $itemtype = "";
+               $item_id ="";
 			}
 		}
 		// analyze previous version (still present in DB)
-		$oldgraph = $this->fields['graph'];
+		if (!$oldgraph)
+			$oldgraph = $this->fields['graph'];
 		$oldxml=simplexml_load_string(htmlspecialchars_decode(stripslashes(rawurldecode($oldgraph)))); //parse the decoded and stripped xml representing a graph
 		foreach( libxml_get_errors() as $error ) {
 			Toolbox::logInFile('graph', 'error='.print_r($error));
 		}
 		$oldelements = [];
-		foreach($oldxml->diagram as $olddiagram) {
-			$diagram = urldecode(zlib_decode(base64_decode($olddiagram, TRUE))); // decode the base64, decompress (inflate) and url-decode the diagram
-			$diagramxml = simplexml_load_string($diagram); // load the xml into a structure
-			foreach($diagramxml->xpath('//Array[@autocompleteobject]') as $customelement) { // find elements with 'autocompleteobject' in customproperties
-				$itemtype = (string)$customelement['autocompleteobject']; // get the 'autocompleteobject' attribute
-				$item_id = (string)$customelement['glpi_id']; // get the 'glpi_id' attribute
-				$oldelements[$itemtype][$item_id] += 1;
-			}
-		}
-		// look for deleted elements and delete them in table glpi_plugin_archimap_graphs_items
-		foreach($oldelements as $itemtype => $arr_id) { // loop through oldelements
-			$itemlist = "";
-			$query = "delete from glpi_plugin_archimap_graphs_items where plugin_archimap_graphs_id = ".$this->fields['id']." and itemtype = '".$itemtype."' and items_id in (" ;
-			foreach($arr_id as $item_id => $count) {
-				if (!isset($newelements[$itemtype][$item_id])) { // if it doesn't exist in newelement
-					$itemlist .= $item_id.","; // it is added to the list of elements to be suppressed
+		if ($oldxml)
+		{
+			foreach($oldxml->diagram as $olddiagram) {
+				$diagram = urldecode(zlib_decode(base64_decode($olddiagram, TRUE))); // decode the base64, decompress (inflate) and url-decode the diagram
+				$diagramxml = simplexml_load_string($diagram); // load the xml into a structure
+				foreach($diagramxml->xpath('//Array[@autocompleteobject]') as $customelement) { // find elements with 'autocompleteobject' in customproperties
+                     $itemtype = (string)$customelement['autocompleteobject']; // get the 'autocompleteobject' attribute
+                     $item_id = (string)$customelement['glpi_id']; // get the 'glpi_id' attribute
+                     if (!empty($itemtype) && !empty($item_id))
+                        isset($oldelements[$itemtype][$item_id])? $oldelements[$itemtype][$item_id] += 1 : $oldelements[$itemtype][$item_id] = 0;
+                     $itemtype = "";
+                     $item_id ="";
 				}
 			}
-			if (strlen($itemlist) > 1) {
-				$itemlist = substr($itemlist, 0, -1); // remove last comma
-				$query .= $itemlist.")";
-				$result=$DB->query($query);
+			// look for deleted elements and delete them in table glpi_plugin_archimap_graphs_items
+			foreach($oldelements as $itemtype => $arr_id) { // loop through oldelements
+				$itemlist = "";
+				$query = "delete from glpi_plugin_archimap_graphs_items where plugin_archimap_graphs_id = ".$ID/*$this->fields['id']*/." and itemtype = '".$itemtype."' and items_id in (" ;
+					foreach($arr_id as $item_id => $count) {
+					if (!isset($newelements[$itemtype][$item_id])) { // if it doesn't exist in newelement
+						$itemlist .= $item_id.","; // it is added to the list of elements to be suppressed
+					}
+				}
+				if (strlen($itemlist) > 1) {
+					$itemlist = substr($itemlist, 0, -1); // remove last comma
+					$query .= $itemlist.")";
+					$result=$DB->query($query);
+				}
 			}
 		}
 		// look for new elements and add them in table glpi_plugin_archimap_graphs_items
@@ -786,7 +794,8 @@ class PluginArchimapGraph extends CommonDBTM {
 			$query = "INSERT IGNORE glpi_plugin_archimap_graphs_items (plugin_archimap_graphs_id,items_id,itemtype) values ";
 			foreach($arr_id as $item_id => $count) {
 				if (!isset($oldelements[$itemtype][$item_id])) { // if it doesn't exist in oldelement
-					$itemlist .= "(".$this->fields['id'].",".$item_id.",'".$itemtype."'),"; // add it to the list of elements to be inserted
+					if ($item_id)
+						$itemlist .= "(".$ID/*$this->fields['id']*/.",".$item_id.",'".$itemtype."'),"; // add it to the list of elements to be inserted
 				}
 			}
 			if (strlen($itemlist) > 1) {

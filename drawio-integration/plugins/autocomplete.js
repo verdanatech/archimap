@@ -23,10 +23,14 @@
  --------------------------------------------------------------------------
  */
 window.DRAWIOINTEGRATION_PATH = '../../../../drawio-integration';
-window.ROOT_PATH = document.location.protocol + '//' + document.location.hostname + window.location.pathname.substring(0,window.location.pathname.indexOf('/plugins'));
+window.EXPORT_URL = 'https://convert.diagrams.net/node/export';
+window.ROOT_PATH = window.location.protocol + '//' + window.location.hostname;
+window.ROOT_PATH += (window.location.port && window.location.port != "") ? ':' + window.location.port : '';
+window.ROOT_PATH += window.location.pathname.substring(0,(window.location.pathname.indexOf('/marketplace')>=0?window.location.pathname.indexOf('/marketplace'):window.location.pathname.indexOf('/plugins')));
+// Append port number if different from empty string
 Draw.loadPlugin(function(editorUi)
 {
-//	console.log('entering autocomplete plugin', editorUi);
+	console.log('entering autocomplete plugin', editorUi);
 	window.appUi = editorUi;
 // Adds resource for plugin
 	mxResources.add(window.DRAWIOINTEGRATION_PATH + '/resources/archi');
@@ -88,11 +92,13 @@ Draw.loadPlugin(function(editorUi)
 					var node = mxUtils.parseXml(decodeHTML(customstyles['param'][i].value)).documentElement;
 					var dec = new mxCodec(node.ownerDocument);
 					var customstyle = dec.decode(node);
-					// copy style in stylesheet
-					stylesheet.styles[customstyles['param'][i].key] = customstyle.styles[customstyles['param'][i].key];
-					// mark it as "customstyle"
-					if (stylesheet.styles[customstyles['param'][i].key])
-						stylesheet.styles[customstyles['param'][i].key].customstyle = true;
+					if (customstyle && customstyle.styles)
+					{	// copy style in stylesheet
+						stylesheet.styles[customstyles['param'][i].key] = customstyle.styles[customstyles['param'][i].key];
+						// mark it as "customstyle"
+						if (stylesheet.styles[customstyles['param'][i].key])
+							stylesheet.styles[customstyles['param'][i].key].customstyle = true;
+					}
 				}
 			}
 			this.refreshCellStyle(this.editor);
@@ -137,6 +143,7 @@ Draw.loadPlugin(function(editorUi)
 					thisCell.customproperties['autocompleteaddedclass'] = classlist;
 				}
 			}
+			thisEditor.graph.refresh();
 		}
 	}
 
@@ -146,7 +153,6 @@ Draw.loadPlugin(function(editorUi)
 		var uiCreatePopupMenu = editorUi.menus.createPopupMenu;
 		editorUi.menus.createPopupMenu = function(menu, cell, evt)
 		{
-			
 			if (editorUi.editor.graph.getSelectionCount() == 1)
 			{
 				var cell = editorUi.editor.graph.getSelectionCell();
@@ -265,23 +271,26 @@ Draw.loadPlugin(function(editorUi)
 								options.fields[key].optionLabels[i] = data[i][columns[key].column];
 							}
 						}
-						// fill in  form data with current customproperties
+						// fill in  form data with current customproperties (if there are)
 						var formdata = {};
-						for (var i = 0; i < schema.properties.length; i++) {
-							options.fields[i]["optionLabels"] ? // if a dropdown list exists
+						if (cell.customproperties['glpi_id'])
+						{
+							for (var i in schema.properties) {
+								options.fields[i] && options.fields[i]["optionLabels"] ? // if a dropdown list exists
 															formdata[i] = schema.properties[i].enum[options.fields[i].optionLabels.indexOf(cell.customproperties[schema.properties[i].title])] // find index of this value in the list optionLabels and take the "enum" at this index
 															:
 															formdata[i] = cell.customproperties[schema.properties[i].title];
+							}
 						}
 						// get value typed in cell and fill form with it
-						var currentdata = typeof cell.value === 'string' ? cell.value.split('\n') : cell.value.attributes.getNamedItem('label').nodeValue.split('\n');
+						var currentdata = typeof cell.value === 'string' ? cell.value.split(/<br>|\n+/) : cell.value.attributes.getNamedItem('label').nodeValue.split('\n');
 						for (var i = 0; i < currentdata.length; i++)
 						{
 							// get property displayed from graph display preferences
 							custompropertyname = editorUi.editor.graph.preferences[cell.customproperties.stencil] ? editorUi.editor.graph.preferences[cell.customproperties.stencil].values[i] : 'name';
 							// find position in form field sequence
 							var j = indexOfArrayWithObjectAttribute(columns, 'as', custompropertyname);
-							options.fields[j]["optionLabels"] ? // if a dropdown list exists
+							options.fields[j] && options.fields[j]["optionLabels"] ? // if a dropdown list exists
 															formdata[j] = schema.properties[j].enum[options.fields[j].optionLabels.indexOf(currentdata[i])] // find index of this value in the list optionLabels and take the "enum" at this index
 															:
 															formdata[j] = currentdata[i];
@@ -444,7 +453,7 @@ Draw.loadPlugin(function(editorUi)
 										{
 											cells = editorUi.stringToCells(Graph.decompress(data[l].xml));
 											// only for vertices (not edges) with customproperties
-											if (!cells[0].edge && cells[0].customproperties)
+											if (/*!cells[0].edge &&*/ cells[0].customproperties)
 											{
 												name = (cells[0].customproperties.stencil ? cells[0].customproperties.stencil : data[l].title);
 												// add the cell as customstencil in sidebar
@@ -691,7 +700,7 @@ EditorUi.prototype.updateTabContainer = function()
 	}
 };
 
-//	Refresh cells customproperties
+//	Refresh cells customproperties from the stencil
 	EditorUi.prototype.refreshCustomProperties = function (thisEditor)
 	{
 		if (thisEditor && thisEditor.graph && thisEditor.graph.model && thisEditor.graph.model.cells)
@@ -1062,6 +1071,51 @@ EditorUi.prototype.updateTabContainer = function()
 //mxGraph.prototype.pageFormat = mxConstants.PAGE_FORMAT_A4_PORTRAIT;
 mxGraph.prototype.pageFormat = mxConstants.PAGE_FORMAT_A4_LANDSCAPE;
 
+// inspired from mxClient.js
+/**
+ * Function: createDefaultVertexStyle
+ *
+ * Creates and returns the default vertex style.
+ */
+mxStylesheet.prototype.createDefaultVertexStyle = function()
+{
+	var style = new Object();
+
+	style[mxConstants.STYLE_SHAPE] = mxConstants.SHAPE_RECTANGLE;
+	style[mxConstants.STYLE_PERIMETER] = mxPerimeter.RectanglePerimeter;
+	style[mxConstants.STYLE_VERTICAL_ALIGN] = mxConstants.ALIGN_MIDDLE;
+	style[mxConstants.STYLE_ALIGN] = mxConstants.ALIGN_CENTER;
+//	style[mxConstants.STYLE_FILLCOLOR] = '#C3D9FF';
+	style[mxConstants.STYLE_FILLCOLOR] = '#FFFFFF';
+//	style[mxConstants.STYLE_STROKECOLOR] = '#6482B9';
+	style[mxConstants.STYLE_STROKECOLOR] = '#000000';
+//	style[mxConstants.STYLE_FONTCOLOR] = '#774400';
+	style[mxConstants.STYLE_FONTCOLOR] = '#000000';
+
+	return style;
+};
+
+/**
+ * Function: createDefaultEdgeStyle
+ *
+ * Creates and returns the default edge style.
+ */
+mxStylesheet.prototype.createDefaultEdgeStyle = function()
+{
+	var style = new Object();
+
+	style[mxConstants.STYLE_SHAPE] = mxConstants.SHAPE_CONNECTOR;
+	style[mxConstants.STYLE_ENDARROW] = mxConstants.ARROW_CLASSIC;
+	style[mxConstants.STYLE_VERTICAL_ALIGN] = mxConstants.ALIGN_MIDDLE;
+	style[mxConstants.STYLE_ALIGN] = mxConstants.ALIGN_CENTER;
+//	style[mxConstants.STYLE_STROKECOLOR] = '#6482B9';
+	style[mxConstants.STYLE_STROKECOLOR] = '#000000';
+//	style[mxConstants.STYLE_FONTCOLOR] = '#446299';
+	style[mxConstants.STYLE_FONTCOLOR] = '#000000';
+
+	return style;
+};
+
 /**
  * Variable: custompreferences
  *
@@ -1265,7 +1319,268 @@ Editor.prototype.getGraphXml = function(ignoreSelection)
 };
 
 // Inspired from mxClient.js, to paint icon on vertex and edge shapes
-mxLabel.prototype.paintForeground = function(c, x, y, w, h)
+/**
+ * Function: paint
+ * 
+ * Generic rendering code.
+ */
+mxShape.prototype.paint = function(c)
+{
+	var strokeDrawn = false;
+	
+	if (c != null && this.outline)
+	{
+		var stroke = c.stroke;
+		
+		c.stroke = function()
+		{
+			strokeDrawn = true;
+			stroke.apply(this, arguments);
+		};
+
+		var fillAndStroke = c.fillAndStroke;
+		
+		c.fillAndStroke = function()
+		{
+			strokeDrawn = true;
+			fillAndStroke.apply(this, arguments);
+		};
+	}
+
+	// Scale is passed-through to canvas
+	var s = this.scale;
+	var x = this.bounds.x / s;
+	var y = this.bounds.y / s;
+	var w = this.bounds.width / s;
+	var h = this.bounds.height / s;
+
+	if (this.isPaintBoundsInverted())
+	{
+		var t = (w - h) / 2;
+		x += t;
+		y -= t;
+		var tmp = w;
+		w = h;
+		h = tmp;
+	}
+	
+	this.updateTransform(c, x, y, w, h);
+	this.configureCanvas(c, x, y, w, h);
+
+	// Adds background rectangle to capture events
+	var bg = null;
+	
+	if ((this.stencil == null && this.points == null && this.shapePointerEvents) ||
+		(this.stencil != null && this.stencilPointerEvents))
+	{
+		var bb = this.createBoundingBox();
+		
+		if (this.dialect == mxConstants.DIALECT_SVG)
+		{
+			bg = this.createTransparentSvgRectangle(bb.x, bb.y, bb.width, bb.height);
+			this.node.appendChild(bg);
+		}
+		else
+		{
+			var rect = c.createRect('rect', bb.x / s, bb.y / s, bb.width / s, bb.height / s);
+			rect.appendChild(c.createTransparentFill());
+			rect.stroked = 'false';
+			c.root.appendChild(rect);
+		}
+	}
+
+	if (this.stencil != null)
+	{
+		this.stencil.drawShape(c, this, x, y, w, h);
+	}
+	else
+	{
+		// Stencils have separate strokewidth
+		c.setStrokeWidth(this.strokewidth);
+		
+		if (this.points != null)
+		{
+			// Paints edge shape
+			var pts = [];
+			
+			for (var i = 0; i < this.points.length; i++)
+			{
+				if (this.points[i] != null)
+				{
+					pts.push(new mxPoint(this.points[i].x / s, this.points[i].y / s));
+				}
+			}
+
+			this.paintEdgeShape(c, pts);
+// Added EFE 20141210
+			var displayIcon = 'true';
+			if (c.state && c.state.view && c.state.view.graph && c.state.view.graph.preferences && c.state.view.graph.preferences.displayIconOnEdge)
+				displayIcon = c.state.view.graph.preferences.displayIconOnEdge.values[0];
+			if (displayIcon && displayIcon.toLowerCase() == 'true')
+			{
+					if (this.image != null)
+					{
+						var cellBounds = this.state.getCellBounds(x, y, w, h);
+						var bounds = this.getImageBounds(cellBounds.x, cellBounds.y, cellBounds.width, cellBounds.height);
+						c.state.dx = x - cellBounds.x;	// position image at the right place by changing canvas dx & dy (modified by mxAbstractCanvas2D.prototype.translate in some calls to paintEdgeShape)
+						c.state.dy = y - cellBounds.y;
+						c.image(bounds.x, bounds.y, bounds.width, bounds.height, this.image, false, false, false);
+					}
+			}
+// End of Added EFE 20141210
+		}
+		else
+		{
+			// Paints vertex shape
+			this.paintVertexShape(c, x, y, w, h);
+// Added EFE 20141210
+			if (this.state)
+			{	
+				var displayIcon = this.state.view.graph.preferences.displayIconOnVertex.values[0];
+				if (displayIcon && displayIcon.toLowerCase() == 'true')
+				{
+					if (this.image != null)
+					{
+						var cellBounds = this.state.getCellBounds(x, y, w, h);
+						var bounds = this.getImageBounds(cellBounds.x, cellBounds.y, cellBounds.width, cellBounds.height);
+						c.state.dx = x - cellBounds.x;	// position image at the right place by changing canvas dx & dy (modified by mxAbstractCanvas2D.prototype.translate in some calls to paintVertexShape)
+						c.state.dy = y - cellBounds.y;
+						c.image(bounds.x, bounds.y, bounds.width, bounds.height, this.image, false, false, false);
+					}
+				}
+			}
+// End of Added EFE 20141210
+		}
+	}
+	
+	if (bg != null && c.state != null && c.state.transform != null)
+	{
+		bg.setAttribute('transform', c.state.transform);
+	}
+	
+	// Draws highlight rectangle if no stroke was used
+	if (c != null && this.outline && !strokeDrawn)
+	{
+		c.rect(x, y, w, h);
+		c.stroke();
+	}
+};
+
+mxShape.prototype.getImageBounds = function(x, y, w, h)
+{
+	var align = mxUtils.getValue(this.style, mxConstants.STYLE_IMAGE_ALIGN, mxConstants.ALIGN_LEFT);
+	var valign = mxUtils.getValue(this.style, mxConstants.STYLE_IMAGE_VERTICAL_ALIGN, mxConstants.ALIGN_MIDDLE);
+	var width = mxUtils.getNumber(this.style, mxConstants.STYLE_IMAGE_WIDTH, mxConstants.DEFAULT_IMAGESIZE);
+	var height = mxUtils.getNumber(this.style, mxConstants.STYLE_IMAGE_HEIGHT, mxConstants.DEFAULT_IMAGESIZE);
+	var spacing = mxUtils.getNumber(this.style, mxConstants.STYLE_SPACING, this.spacing) + 5;
+
+	if (align == mxConstants.ALIGN_CENTER)
+	{
+		x += (w - width) / 2;
+	}
+	else if (align == mxConstants.ALIGN_RIGHT)
+	{
+		x += w - width - spacing;
+	}
+	else // default is left
+	{
+		x += spacing;
+	}
+
+	if (valign == mxConstants.ALIGN_TOP)
+	{
+		y += spacing;
+	}
+	else if (valign == mxConstants.ALIGN_BOTTOM)
+	{
+		y += h - height - spacing;
+	}
+	else // default is middle
+	{
+		y += (h - height) / 2;
+	}
+	
+	return new mxRectangle(x, y, width, height);
+};
+
+mxSvgCanvas2D.prototype.image = function(x, y, w, h, src, aspect, flipH, flipV)
+{
+	src = this.converter.convert(src);
+	
+	// LATER: Add option for embedding images as base64.
+	aspect = (aspect != null) ? aspect : true;
+	flipH = (flipH != null) ? flipH : false;
+	flipV = (flipV != null) ? flipV : false;
+	
+	var s = this.state;
+	x += s.dx;
+	y += s.dy;
+	
+	var node = this.createElement('image');
+	node.setAttribute('x', this.format(x * s.scale) + this.imageOffset);
+	node.setAttribute('y', this.format(y * s.scale) + this.imageOffset);
+	node.setAttribute('width', this.format(w * s.scale));
+	node.setAttribute('height', this.format(h * s.scale));
+	
+	// Workaround for missing namespace support
+	if (node.setAttributeNS == null)
+	{
+		node.setAttribute('xlink:href', src);
+	}
+	else
+	{
+		node.setAttributeNS(mxConstants.NS_XLINK, 'xlink:href', src);
+	}
+	
+	if (!aspect)
+	{
+		node.setAttribute('preserveAspectRatio', 'none');
+	}
+
+	if (s.alpha < 1 || s.fillAlpha < 1)
+	{
+		node.setAttribute('opacity', s.alpha * s.fillAlpha);
+	}
+	
+	var tr = this.state.transform || '';
+	
+	if (flipH || flipV)
+	{
+		var sx = 1;
+		var sy = 1;
+		var dx = 0;
+		var dy = 0;
+		
+		if (flipH)
+		{
+			sx = -1;
+			dx = -w - 2 * x;
+		}
+		
+		if (flipV)
+		{
+			sy = -1;
+			dy = -h - 2 * y;
+		}
+		
+		// Adds image tansformation to existing transform
+		tr += 'scale(' + sx + ',' + sy + ')translate(' + (dx * s.scale) + ',' + (dy * s.scale) + ')';
+	}
+
+	if (tr.length > 0)
+	{
+		node.setAttribute('transform', tr);
+	}
+	
+	if (!this.pointerEvents)
+	{
+		node.setAttribute('pointer-events', 'none');
+	}
+	
+	this.root.appendChild(node);
+};
+
+/*mxLabel.prototype.paintForeground = function(c, x, y, w, h)
 {
 // Added EFE 20141210
 	var displayIcon = this.state.view.graph.preferences.displayIconOnVertex.values[0];
@@ -1299,7 +1614,7 @@ mxPolyline.prototype.paintEdgeShape = function(c, pts)
 		this.paintImage(c, pts);
 	}
 };
-
+*/
 // Added EFE 20141201
 /**
  * Function: addRadioInput
@@ -1791,42 +2106,44 @@ mxForm.prototype.addFieldMove = function(name, input, output)
 				
 			// change every cell labels according to choice
 			var c = graph.view.canvas;
+//			console.log('preferences', graph.preferences);
 			for (var icell in graph.model.cells)
 			{
 				var ishape = graph.model.cells[icell].mxObjectId;
 				var shape = graph.view.states.map[ishape].shape;
 				var displayIcon = null;
-				if (graph.model.cells[icell].vertex)
+				if (graph.model.cells[icell].customproperties)
 				{
-					if (graph.model.cells[icell].customproperties)
+					var newLabel = '';
+					// look for a label preference according to the cell's stencil
+					for (ifield in graph.preferences)
 					{
-						var newLabel = '';
-						// look for a label preference according to the cell's stencil
-						for (ifield in graph.preferences)
+						if (graph.preferences[ifield].description
+						&& graph.preferences[ifield].description.substring(0,5).toLowerCase() == 'label'
+						&& graph.model.cells[icell].customproperties['stencil'] == ifield)
 						{
-							if (graph.preferences[ifield].description
-							&& graph.preferences[ifield].description.substring(0,5).toLowerCase() == 'label'
-							&& graph.model.cells[icell].customproperties['stencil'] == ifield)
+							for (ivalue in graph.preferences[ifield].values)
 							{
-								for (ivalue in graph.preferences[ifield].values)
+								var customproperty = graph.preferences[ifield].values[ivalue];
+								// compose the new label from each customproperty, separated by a newline
+								if (graph.model.cells[icell].customproperties[customproperty])
 								{
-									var customproperty = graph.preferences[ifield].values[ivalue];
-									// compose the new label from each customproperty, separated by a newline
-									if (graph.model.cells[icell].customproperties[customproperty])
-									{
-										if (newLabel != '')
-											newLabel += '\n';
-										newLabel += graph.model.cells[icell].customproperties[customproperty];
-									}
+									if (newLabel != '')
+										newLabel += '\n';
+									newLabel += graph.model.cells[icell].customproperties[customproperty];
 								}
 							}
 						}
-						if (newLabel)
-						{
-							graph.cellLabelChanged(graph.model.cells[icell], newLabel,false);
-						}
 					}
-					if (graph.preferences && graph.preferences.displayIconOnEdge)
+					if (newLabel)
+					{
+						graph.cellLabelChanged(graph.model.cells[icell], newLabel,false);
+					}
+				}
+				
+				if (graph.model.cells[icell].vertex)
+				{
+					if (graph.preferences && graph.preferences.displayIconOnVertex)
 						displayIcon = graph.preferences.displayIconOnVertex.values[0];
 				} else
 				if (graph.model.cells[icell].edge)
@@ -2531,6 +2848,7 @@ PropertiesPanel.prototype.init = function()
 	var editor = ui.editor;
 	var graph = editor.graph;
 	var ss = this.format.getSelectionState();
+//	var ss = ui.getSelectionState();
 	
 	this.container.appendChild(this.addProperties(this.createPanel()));
 };
@@ -2544,6 +2862,7 @@ PropertiesPanel.prototype.addProperties = function(div)
 	var editor = ui.editor;
 	var graph = editor.graph;
 	var ss = this.format.getSelectionState();
+//	var ss = ui.getSelectionState();
 	// Create table 
 	div.style.paddingTop = '0px';
 	div.style.paddingBottom = '2px';
