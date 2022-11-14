@@ -1,0 +1,63 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2021-04-11 15:43+0200\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=CHARSET\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
+
+#: inc/graph_item.class.php:466
+msgctxt "button"
+msgid "Associate a graph"
+msgstr ""
+
+#: hook.php:463
+msgid "Associate to the diagram"
+msgstr ""
+
+#: setup.php:77 inc/graph.class.php:47 inc/menu.class.php:31
+#: inc/profile.class.php:141
+msgid "Diagram"
+msgid_plural "Diagrams"
+msgstr[0] ""
+msgstr[1] ""
+
+#: inc/diagram.class.php:41
+msgid "Drawing Pane"
+msgid_plural "Drawing Pane"
+msgstr[0] ""
+msgstr[1] ""
+
+#: inc/graph.class.php:122 inc/graph.class.php:228 inc/graph_item.class.php:495
+msgid "Graph Maintainer"
+msgstr ""
+
+#: inc/graph.class.php:129 inc/graph.class.php:224 inc/graph_item.class.php:494
+msgid "Graph Owner"
+msgstr ""
+
+#: inc/graph.class.php:389
+msgid "Graph associated"
+msgid_plural "Graphs associated"
+msgstr[0] ""
+msgstr[1] ""
+
+#: inc/diagram.class.php:107
+msgid "Load diagram"
+msgstr ""
+
+#: inc/graph.class.php:215
+msgid "Short description"
+msgstr ""
