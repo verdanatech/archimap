@@ -67,16 +67,7 @@ class PluginArchimapConfig extends CommonDBTM {
          'datatype'		 => 'text'
       ];
 
-      $tab[] = [
-         'id'            => '16',
-         'table'         => $this->getTable(),
-         'field'         => 'date_mod',
-         'massiveaction' => false,
-         'name'          => __('Last update'),
-         'datatype'      => 'datetime'
-      ];
-
-      $tab[] = [
+           $tab[] = [
          'id'            => '72',
          'table'         => $this->getTable(),
          'field'         => 'id',
