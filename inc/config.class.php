@@ -67,7 +67,7 @@ class PluginArchimapConfig extends CommonDBTM {
          'datatype'		 => 'text'
       ];
 
-           $tab[] = [
+      $tab[] = [
          'id'            => '72',
          'table'         => $this->getTable(),
          'field'         => 'id',
