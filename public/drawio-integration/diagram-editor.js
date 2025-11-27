@@ -553,8 +553,14 @@ DiagramEditor.prototype.getFrameUrl = function()
     url += '&cors=' + cors;
 	if (this.config.user && this.config.user.language)
 	{
+		if (this.config.user.language.indexOf('_') !== -1) {
+			this.config.user.language = this.config.user.language.replace(/_/g, "-").toLowerCase() 
+			url += '&lang=' + this.config.user.language;
+		}else{
 		url += '&lang=' + this.config.user.language.substring(0,2);
-//		window.mxLanguage = this.config.user.language;
+	}
+		//		window.mxLanguage = this.config.user.language;
+
 	}
 // End of Added EFE 20200715
 
