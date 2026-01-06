@@ -24,7 +24,10 @@
  --------------------------------------------------------------------------
  */
  
-include ('../../../../../inc/includes.php');
+if (!defined('GLPI_ROOT')) 
+   include_once ('../../../../../inc/includes.php');
+else
+   include_once (GLPI_ROOT.'/inc/includes.php');
 
 $DB = new DB;
 //header("Content-Type: text/html; charset=UTF-8");
@@ -105,7 +108,7 @@ if ($test) {
 	$datas[] = $query;
 	$query .= " LIMIT 5";
 }
-if ($result=$DB->query($query)) {
+if ($result=$DB->doQuery($query)) {
 	while ($data=$DB->fetchAssoc($result)) {
 //var_dump($data);
 		$datas[] = $data;

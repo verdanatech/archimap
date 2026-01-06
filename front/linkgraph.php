@@ -24,8 +24,10 @@
  --------------------------------------------------------------------------
  */
  
-define('GLPI_ROOT', '../../..');
-include (GLPI_ROOT . "/inc/includes.php");
+if (!defined('GLPI_ROOT')) 
+   include_once ('../../../inc/includes.php');
+else
+   include_once (GLPI_ROOT.'/inc/includes.php');
 
 $DB = new DB;
 //header("Content-Type: text/html; charset=UTF-8");
@@ -50,5 +52,5 @@ foreach ($items as $itemtype => $items_id) {
 	}
 }
 //Toolbox::logInFile("linkgraph", $query."\n");
-$result=$DB->query($query);
+$result=$DB->doQuery($query);
 ?>

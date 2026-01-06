@@ -152,6 +152,7 @@ DiagramEditor.prototype.editElement = function(elem)
 	var diaedit = this;
     var getSessionToken = function()
     {
+		var token = document.getElementsByName("_glpi_csrf_token")[0];
 /*        let tables = {};
         tables['app_token'] = {'column' : 'key, value', 
 					'type' : 'APP_TOKEN'};
@@ -160,14 +161,14 @@ DiagramEditor.prototype.editElement = function(elem)
 			if (xhr.readyState == 4 && (xhr.status == 200 || xhr.status == 0)) {
 				app_token = JSON && JSON.parse(xhr.responseText) || $.parseJSON(xhr.responseText);
 				if (app_token['app_token']['']) {
-*/				if (user.app_token) {
+				if (user.app_token) {
 //					user.app_token = app_token['app_token'][''].value;
 					var xhr2 = new XMLHttpRequest();
 					xhr2.onreadystatechange = function() {
 						if (xhr2.readyState == 4 && (xhr2.status == 200 || xhr2.status == 0)) {
 							session_token = JSON && JSON.parse(xhr2.responseText) || $.parseJSON(xhr2.responseText);
 							user.session_token = session_token.session_token;
-							// create the "libraries" object in this.config (see https://desk.draw.io/support/solutions/articles/16000058316)
+*/							// create the "libraries" object in this.config (see https://desk.draw.io/support/solutions/articles/16000058316)
 							diaedit.config = {'libraries' : [ {
 														"title": { "main": "Custom"},
 														"entries": [ { "id": "glpi",
@@ -192,8 +193,11 @@ DiagramEditor.prototype.editElement = function(elem)
 										success(datas, libconfig);
 									}
 								};
-								xhr3.open("POST", /*window.DRAWIOINTEGRATION_PATH +*/ "../../archimap/public/drawio-integration/ajax/getconfig.php", true);
+								xhr3.open("POST", /* window.DRAWIOINTEGRATION_PATH +*/ "../../archimap/public/drawio-integration/ajax/getconfig.php", true);
 								xhr3.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
+//								xhr3.setRequestHeader("Session-Token", user.session_token);
+								xhr3.setRequestHeader("X-Requested-With", "XMLHttpRequest");
+								xhr3.setRequestHeader("X-Glpi-Csrf-Token", user.csrf_token);
 								xhr3.send(JSON.stringify(tables));
 							}
 							var success = function(repolibs, libconfig)
@@ -314,7 +318,7 @@ DiagramEditor.prototype.editElement = function(elem)
 							};
 							var customlibsrepo = getLibraries('LIBXML', null, diaedit.config.libraries[0].entries[0].libs, success, error);
     
-						}
+/*						}
 						else if (xhr2.readyState == 4) {
 							session_token = JSON && JSON.parse(xhr2.responseText) || $.parseJSON(xhr2.responseText);
 							alert("Error when initializing the link between Drawio and GLPI : <br/>HTTP initSession error "+xhr2.status+" - "+xhr2.statusText
@@ -335,7 +339,7 @@ DiagramEditor.prototype.editElement = function(elem)
 					hideDrawio();
 					showGlpi();
 				}
-/*			}
+			}
 			else if (xhr.readyState == 4) {
 				alert("Error when getting the APP_TOKEN : HTTP error "+xhr.status+" - "+xhr.statusText);
 				hideDrawio();
@@ -553,14 +557,8 @@ DiagramEditor.prototype.getFrameUrl = function()
     url += '&cors=' + cors;
 	if (this.config.user && this.config.user.language)
 	{
-		if (this.config.user.language.indexOf('_') !== -1) {
-			this.config.user.language = this.config.user.language.replace(/_/g, "-").toLowerCase() 
-			url += '&lang=' + this.config.user.language;
-		}else{
 		url += '&lang=' + this.config.user.language.substring(0,2);
-	}
-		//		window.mxLanguage = this.config.user.language;
-
+//		window.mxLanguage = this.config.user.language;
 	}
 // End of Added EFE 20200715
 
@@ -700,12 +698,12 @@ DiagramEditor.prototype.save = function(data, draft, elt)
 DiagramEditor.prototype.done = function(data, draft, elt)
 {
 	// hook for subclassers
-					var diagramid = document.getElementsByName("id")[0];
+					var diagramid = document.getElementsByName("diagramid")[0];
 					if (diagramid) {
 						// When pressing the "Save" button of the drawing pane, load the hidden field "graph" with the diagram 
 						// this field will be saved in GLPI DB with the other fields of the form)
 //						var inputgraph = document.getElementsByName("graph")[0];
-						var token = document.getElementsByName("_glpi_csrf_token")[0];
+//						console.log("inputgraph",inputgraph);
 						elt.value = encodeURIComponent(data);
 						if (elt.value.length < MAX_REQUEST_SIZE)
 						{
@@ -723,7 +721,9 @@ DiagramEditor.prototype.done = function(data, draft, elt)
 							}; 
 							xhr.open("POST", /*window.DRAWIOINTEGRATION_PATH +*/ "../../archimap/public/drawio-integration/ajax/updategraph.php", false);
 							xhr.setRequestHeader("Content-Type", "application/json");
-							xhr.setRequestHeader("Session-Token", token.value);
+//							xhr.setRequestHeader("Session-Token", user.session_token);
+							xhr.setRequestHeader("X-Requested-With", "XMLHttpRequest");
+							xhr.setRequestHeader("X-Glpi-Csrf-Token", user.csrf_token);
 							xhr.send(JSON.stringify({'update' : 'Save',
                                                     'id' : diagramid.value,
                                                     'graph' : elt.value

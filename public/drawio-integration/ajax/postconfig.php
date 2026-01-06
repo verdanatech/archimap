@@ -24,8 +24,10 @@
  --------------------------------------------------------------------------
  */
  
-define('GLPI_ROOT', '../../../../..');
-include (GLPI_ROOT . "/inc/includes.php");
+if (!defined('GLPI_ROOT')) 
+   include_once ('../../../../../inc/includes.php');
+else
+   include_once (GLPI_ROOT.'/inc/includes.php');
 
 $DB = new DB;
 $keys = file_get_contents('php://input');
@@ -42,7 +44,7 @@ foreach($keys as $key => $typevalue) {
     $query = "UPDATE glpi_plugin_archimap_configs SET value = '$value' WHERE type = '$type' and `key` = '$key';";
 //Toolbox::logInFile("postconfig", "postconfig ".$query."\n");
 //var_dump($query);
-    $result=$DB->query($query);
+    $result=$DB->doQuery($query);
     $datas[$key] = $DB->affectedRows();
     if ($type == 'STYLE') $nbstyles++;
 }

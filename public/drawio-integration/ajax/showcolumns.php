@@ -24,8 +24,10 @@
  --------------------------------------------------------------------------
  */
  
-define('GLPI_ROOT', '../../../../..');
-include (GLPI_ROOT . "/inc/includes.php");
+if (!defined('GLPI_ROOT')) 
+   include_once ('../../../../../inc/includes.php');
+else
+   include_once (GLPI_ROOT.'/inc/includes.php');
 
 $DB = new DB;
 $tablefields = file_get_contents('php://input');
@@ -43,7 +45,7 @@ foreach($tablefields as $id => $criteria) {
 		$query .= " WHERE ".$where;
 //Toolbox::logInFile("showcolumns", $query."\n");
 //echo $query;
-	if ($result=$DB->query($query)) {
+	if ($result=$DB->doQuery($query)) {
 		while ($data=$DB->fetchAssoc($result)) {
 			$datas[$id]=$data;
 		}

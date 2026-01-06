@@ -24,7 +24,10 @@
  --------------------------------------------------------------------------
  */
  
-include ('../../../../../inc/includes.php');
+if (!defined('GLPI_ROOT')) 
+   include_once ('../../../../../inc/includes.php');
+else
+   include_once (GLPI_ROOT.'/inc/includes.php');
 
 
 $forbidden_tables = ['glpi_users', 'glpi_authldaps', 'glpi_authmails', 'glpi_certificates'];
@@ -58,7 +61,7 @@ foreach($cells as $id => $cell) {
         $query = "SELECT $table.id as glpi_id $jointcolumns from $table $jointtables \nwhere $table.id = $id $jointcriteria";
 //Toolbox::logInFile("getcustomproperties", $query."\n");
 //var_dump($query);
-        if ($result=$DB->query($query)) {
+        if ($result=$DB->doQuery($query)) {
             $data[$key]=$DB->fetchAssoc($result);
         } 
 	} 

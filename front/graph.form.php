@@ -24,7 +24,10 @@
  --------------------------------------------------------------------------
  */
 
-include ('../../../inc/includes.php');
+if (!defined('GLPI_ROOT')) 
+   include_once ('../../../inc/includes.php');
+else
+   include_once (GLPI_ROOT.'/inc/includes.php');
 
 if (!isset($_GET["id"])) $_GET["id"] = "";
 if (!isset($_GET["withtemplate"])) $_GET["withtemplate"] = "";

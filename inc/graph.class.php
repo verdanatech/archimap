@@ -87,95 +87,10 @@ class PluginArchimapGraph extends CommonDBTM {
 //      $temp->deleteByCriteria(['plugin_archimap_graphs_id' => $this->fields['id']]);
    }
 
-   function getSearchOptions() {
-
-      $tab                       = [];
-      if (version_compare(GLPI_VERSION,'9.3','ge')) return $tab;
-
-      $tab['common']             = self::getTypeName(2);
-
-      $tab[1]['table']           = $this->getTable();
-      $tab[1]['field']           = 'name';
-      $tab[1]['name']            = __('Name');
-      $tab[1]['datatype']        = 'itemlink';
-      $tab[1]['itemlink_type']   = $this->getType();
-
-      $tab[2]['table']			 = $this->getTable();
-      $tab[2]['field']			 = 'shortdescription';
-      $tab[2]['name']            = __('Description');
-      $tab[2]['datatype']        = 'text';
-
-      $tab[5]['table']          = 'glpi_plugin_archimap_graphtypes';
-      $tab[5]['field']          = 'name';
-      $tab[5]['name']           = PluginArchimapGraphtype::getTypeName(1);
-      $tab[5]['datatype']       = 'dropdown';
-
-      $tab[7]['table']           = 'glpi_plugin_archimap_graphs_items';
-      $tab[7]['field']           = 'items_id';
-      $tab[7]['nosearch']        = true;
-      $tab[7]['massiveaction']   = false;
-      $tab[7]['name']            = _n('Associated item' , 'Associated items', 2);
-      $tab[7]['forcegroupby']    = true;
-      $tab[7]['joinparams']      = ['jointype' => 'child'];
-
-/*      $tab[5]['table']          = 'glpi_plugin_archimap_graphstates';
-      $tab[5]['field']          = 'name';
-      $tab[5]['name']           = PluginArchimapGraphstate::getTypeName(1);
-      $tab[5]['datatype']       = 'dropdown';
-*/
-      $tab[11]['table']          = 'glpi_users';
-      $tab[11]['field']          = 'name';
-      $tab[11]['linkfield']      = 'users_id';
-      $tab[11]['name']           = __('Graph Maintainer', 'archimap');
-      $tab[11]['datatype']       = 'dropdown';
-      $tab[11]['right']          = 'interface';
-
-      $tab[12]['table']          = 'glpi_groups';
-      $tab[12]['field']          = 'name';
-      $tab[12]['linkfield']      = 'groups_id';
-      $tab[12]['name']           = __('Graph Owner', 'archimap');
-      $tab[12]['condition']      = '`is_assign`';
-      $tab[12]['datatype']       = 'dropdown';
-
-/*      $tab[13]['table']         ='glpi_plugin_archisw_swcomponents';
-      $tab[13]['field']         ='name';
-      $tab[13]['name']          = PluginArchiswSwcomponent::getTypeName(2)." - ".__('Name');
-      $tab[13]['forcegroupby']  = true;
-      $tab[13]['datatype']      = 'itemlink';
-      $tab[13]['massiveaction'] = false;
-      $tab[13]['itemlink_type'] = 'PluginArchiswSwcomponent';
-      $tab[13]['joinparams']    = array('beforejoin'
-                                                => array('table'      => 'glpi_plugin_archimap_graphs_items',
-                                                         'joinparams' => ['jointype' => 'itemtype_item']));
-*/
-      $tab[14]['table']          = $this->getTable();
-      $tab[14]['field']          = 'date_mod';
-      $tab[14]['massiveaction']  = false;
-      $tab[14]['name']           = __('Last update');
-      $tab[14]['datatype']       = 'datetime';
-
-      $tab[30]['table']          = $this->getTable();
-      $tab[30]['field']          = 'id';
-      $tab[30]['name']           = __('ID');
-      $tab[30]['datatype']       = 'number';
-
-      $tab[80]['table']          = 'glpi_entities';
-      $tab[80]['field']          = 'completename';
-      $tab[80]['name']           = __('Entity');
-      $tab[80]['datatype']       = 'dropdown';
-      
-      $tab[81]['table']       = 'glpi_entities';
-      $tab[81]['field']       = 'entities_id';
-      $tab[81]['name']        = __('Entity')."-".__('ID');
-      
-      return $tab;
-   }
-
    // search fields from GLPI 9.3 on
    function rawSearchOptions() {
 
       $tab = [];
-      if (version_compare(GLPI_VERSION,'9.2','le')) return $tab;
 
       $tab[] = [
          'id'   => 'common',
@@ -407,7 +322,7 @@ class PluginArchimapGraph extends CommonDBTM {
                                FROM `glpi_plugin_archimap_graphs`
                              $where)
                 ORDER BY `name`";
-      $result = $DB->query($query);
+      $result = $DB->doQuery($query);
 
       $values = [0 => Dropdown::EMPTY_VALUE];
 
@@ -426,15 +341,25 @@ class PluginArchimapGraph extends CommonDBTM {
                         'myname' => $p['name'],
                         'used'   => $p['used']];
 
-      $out .= Ajax::updateItemOnSelectEvent($field_id,"show_".$p['name'].$rand,
+      if (version_compare(GLPI_VERSION,'10.0.99','le')) 
+         $out .= Ajax::updateItemOnSelectEvent($field_id,"show_".$p['name'].$rand,
                                             Plugin::getWebDir("archimap")."/ajax/dropdownTypeArchimap.php",
+                                            $params, false);
+      else
+         $out .= Ajax::updateItemOnSelectEvent($field_id,"show_".$p['name'].$rand,
+                                            $CFG_GLPI['root_doc'] . "/plugins/archimap/ajax/dropdownTypeArchimap.php",
                                             $params, false);
       $out .= "<span id='show_".$p['name']."$rand'>";
       $out .= "</span>\n";
 
       $params['graphtype'] = 0;
-      $out .= Ajax::updateItem("show_".$p['name'].$rand,
+      if (version_compare(GLPI_VERSION,'10.0.99','le')) 
+         $out .= Ajax::updateItem("show_".$p['name'].$rand,
                                Plugin::getWebDir("archimap")."/ajax/dropdownTypeArchimap.php",
+                               $params, false);
+      else
+         $out .= Ajax::updateItem("show_".$p['name'].$rand,
+                               $CFG_GLPI['root_doc'] . "/plugins/archimap/ajax/dropdownTypeArchimap.php",
                                $params, false);
       if ($p['display']) {
          echo $out;
@@ -500,7 +425,7 @@ class PluginArchimapGraph extends CommonDBTM {
         . getEntitiesRestrictRequest(" AND ","glpi_plugin_archimap_graphs",'','',$this->maybeRecursive());
       $query.= " ORDER BY `glpi_plugin_archimap_graphs`.`name` ";
 
-      $result = $DB->query($query);
+      $result = $DB->doQuery($query);
       $number = $DB->numrows($result);
 
       if (Session::isMultiEntitiesMode()) {
@@ -752,7 +677,7 @@ class PluginArchimapGraph extends CommonDBTM {
 		libxml_use_internal_errors(true);
 		$newxml=simplexml_load_string(htmlspecialchars_decode(stripslashes(rawurldecode($newgraph)))); //parse the decoded and stripped xml representing a graph
 		foreach( libxml_get_errors() as $error ) {
-			Toolbox::logInFile('graph', 'error='.print_r($error));
+			Toolbox::logInFile('graph', 'error='.print_r($error, true));
 		}
 		$newelements = [];
 		foreach($newxml->diagram as $newdiagram) {
@@ -768,11 +693,15 @@ class PluginArchimapGraph extends CommonDBTM {
 			}
 		}
 		// analyze previous version (still present in DB)
-		if (!$oldgraph)
-			$oldgraph = $this->fields['graph'];
+		if (!$oldgraph) {
+            $query = "SELECT graph FROM glpi_plugin_archimap_graphs where id = $ID";
+            $result=$DB->doQuery($query);
+            $data = $DB->fetchAssoc($result);
+			$oldgraph = $data['graph'];
+        }
 		$oldxml=simplexml_load_string(htmlspecialchars_decode(stripslashes(rawurldecode($oldgraph)))); //parse the decoded and stripped xml representing a graph
 		foreach( libxml_get_errors() as $error ) {
-			Toolbox::logInFile('graph', 'error='.print_r($error));
+			Toolbox::logInFile('graph', 'error='.print_r($error, true));
 		}
 		$oldelements = [];
 		if ($oldxml)
@@ -801,7 +730,7 @@ class PluginArchimapGraph extends CommonDBTM {
 				if (strlen($itemlist) > 1) {
 					$itemlist = substr($itemlist, 0, -1); // remove last comma
 					$query .= $itemlist.")";
-					$result=$DB->query($query);
+					$result=$DB->doQuery($query);
 				}
 			}
 		}
@@ -818,7 +747,7 @@ class PluginArchimapGraph extends CommonDBTM {
 			if (strlen($itemlist) > 1) {
 				$itemlist = substr($itemlist, 0, -1); // remove last comma
 				$query .= $itemlist;
-				$result=$DB->query($query);
+				$result=$DB->doQuery($query);
 			}
 		}
 	}

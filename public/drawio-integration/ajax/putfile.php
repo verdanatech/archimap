@@ -32,8 +32,10 @@
  * ---------------------------------------------------------------------
  */
 
-define('GLPI_ROOT', '../../../../..');
-include (GLPI_ROOT . "/inc/includes.php");
+if (!defined('GLPI_ROOT')) 
+   include_once ('../../../../../inc/includes.php');
+else
+   include_once (GLPI_ROOT.'/inc/includes.php');
 
 if (isset($_GET['dir'])) {
 	$dir = $_GET['dir'];

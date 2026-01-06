@@ -24,8 +24,10 @@
  --------------------------------------------------------------------------
  */
  
-define('GLPI_ROOT', '../../..');
-include (GLPI_ROOT . "/inc/includes.php");
+if (!defined('GLPI_ROOT')) 
+   include_once ('../../../inc/includes.php');
+else
+   include_once (GLPI_ROOT.'/inc/includes.php');
 
 $DB = new DB;
 //header("Content-Type: text/html; charset=UTF-8");
@@ -42,5 +44,5 @@ if (isset($_GET['itemtype'])) {
 $query = "delete from glpi_plugin_archimap_graphs_items where plugin_archimap_graphs_id = ".$plugin_archimap_graphs_id.
 		" and itemtype = '".$itemtype."'";
 //Toolbox::logInFile('linkgraph', "delete from glpi_plugin_archimap_graphs_items : plugin_archimap_graphs_id = ".$plugin_archimap_graphs_id."\n");
-$result=$DB->query($query);
+$result=$DB->doQuery($query);
 ?>

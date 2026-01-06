@@ -32,8 +32,10 @@
  * ---------------------------------------------------------------------
  */
 
-define('GLPI_ROOT', '../../../../..');
-include (GLPI_ROOT . "/inc/includes.php");
+if (!defined('GLPI_ROOT')) 
+   include_once ('../../../../../inc/includes.php');
+else
+   include_once (GLPI_ROOT.'/inc/includes.php');
 
 $allowed_dirs = ['archimap/public/drawio-integration/images', 'archimap/public/drawio/src/main/webapp/img'];
 if (isset($_GET['dir'])) {
